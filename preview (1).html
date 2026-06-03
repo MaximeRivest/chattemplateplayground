@@ -1,0 +1,3185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>chattemplateplayground — Open Model Chat Template Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-main: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-header: #ffffff;
+      --bg-input: #ffffff;
+      
+      --border-color: #d1d5db;
+      --border-hover: #9ca3af;
+      --border-focus: #000000;
+      
+      --text-primary: #111827;
+      --text-secondary: #4b5563;
+      --text-muted: #9ca3af;
+      
+      --color-system: #dc2626;
+      --color-user: #059669;
+      --color-assistant: #2563eb;
+      --color-tool: #db2777;
+      --color-thought: #d97706;
+      --color-control: #4b5563;
+      
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { 
+      box-sizing: border-box; 
+    }
+    
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background: var(--bg-main);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    /* Navbar / Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 2px solid #111827;
+      background: #ffffff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #000000;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-tag {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border: 1px solid #111827;
+      padding: 1px 5px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Status Bar in Header */
+    .runtime-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #9ca3af;
+    }
+
+    .status-dot.loading {
+      background: var(--color-thought);
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-dot.ready {
+      background: var(--color-user);
+    }
+
+    .status-dot.error {
+      background: var(--color-system);
+    }
+
+    /* Main Layout */
+    main {
+      max-width: 1420px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: minmax(520px, 1.08fr) minmax(520px, 0.92fr);
+      gap: 32px;
+    }
+
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+    }
+
+    /* Panels & Sections (Borderless) */
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+
+    .right-panel-sticky {
+      position: sticky;
+      top: 80px;
+      height: calc(100vh - 120px);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .right-panel-sticky {
+        position: relative;
+        top: 0;
+        height: auto;
+      }
+    }
+
+    /* Clean Tufte Sections */
+    .section-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 0;
+      border-bottom: 2px solid #111827;
+      padding-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #111827;
+    }
+
+    summary.section-title {
+      cursor: pointer;
+      list-style: none;
+    }
+
+    summary.section-title::-webkit-details-marker {
+      display: none;
+    }
+
+    summary.section-title::after {
+      content: "Show";
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    details[open] > summary.section-title::after {
+      content: "Hide";
+    }
+
+    .section-body {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Typography & Inputs */
+    label {
+      display: block;
+      color: #111827;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .label-hint {
+      text-transform: none;
+      font-weight: 400;
+      color: var(--text-secondary);
+      letter-spacing: 0;
+      font-size: 10px;
+      float: right;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      background: var(--bg-input);
+      border: 1px solid #d1d5db;
+      border-radius: 0; /* Sharp corners */
+      padding: 6px 10px;
+      outline: none;
+      font-size: 13px;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: #000000;
+    }
+
+    textarea {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    /* Grids & Row Helpers */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .row { display: flex; gap: 12px; align-items: center; }
+
+    /* Model Presets List (Text-based, no boxes) */
+    .model-presets-list {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    .model-preset-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 500;
+      border-bottom: 1.5px solid transparent;
+      padding-bottom: 1px;
+    }
+
+    .model-preset-link:hover {
+      color: #000000;
+      border-bottom-color: #d1d5db;
+    }
+
+    .model-preset-link.active {
+      color: #000000;
+      font-weight: 700;
+      border-bottom: 2px solid #000000;
+    }
+
+    .model-info-note {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-style: italic;
+      margin-top: 4px;
+    }
+
+    /* Buttons (Classic sharp outline style) */
+    button {
+      font-family: var(--font-sans);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 0;
+      transition: all 0.1s ease;
+      border: 1px solid #111827;
+      background: #ffffff;
+      color: #111827;
+      outline: none;
+    }
+
+    button:hover {
+      background: #111827;
+      color: #ffffff;
+    }
+
+    .btn-primary {
+      background: #111827;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #000000;
+      border-color: #000000;
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      border-color: #d1d5db;
+      color: var(--text-secondary);
+    }
+
+    .btn-secondary:hover {
+      border-color: #111827;
+      color: #111827;
+      background: #ffffff;
+    }
+
+    .btn-danger {
+      border-color: #dc2626;
+      color: #dc2626;
+      background: #ffffff;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+      color: #ffffff;
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    /* Tab header and buttons */
+    .tab-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #111827;
+    }
+
+    .tab-buttons {
+      display: flex;
+      gap: 16px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 0;
+      padding: 8px 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+    }
+
+    .tab-btn:hover {
+      color: #000000;
+    }
+
+    .tab-btn.active {
+      color: #000000;
+      font-weight: 700;
+      border-bottom: 2px solid #000000;
+    }
+
+    .tab-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Mode Switch (Text Links style) */
+    .mode-switch {
+      display: inline-flex;
+      gap: 12px;
+      font-size: 11px;
+    }
+
+    .mode-switch-btn {
+      background: transparent;
+      border: 0;
+      padding: 2px 4px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-weight: 500;
+      border-bottom: 1.5px solid transparent;
+    }
+
+    .mode-switch-btn:hover {
+      color: #000000;
+    }
+
+    .mode-switch-btn.active {
+      color: #000000;
+      font-weight: 700;
+      border-bottom: 2px solid #000000;
+    }
+
+    /* Visual Messages List */
+    .visual-messages-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .message-item {
+      border: 1px solid #111827;
+      border-left: 4px solid #111827;
+      padding: 12px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .message-item.role-user { border-left-color: #6b7280; }
+    .message-item.role-assistant { border-left-color: #9ca3af; }
+    .message-item.role-tool { border-left-color: #4b5563; }
+
+    .message-item.system-prompt-item {
+      border-color: #111827;
+      border-left-color: #111827;
+      background: #fcfcfc;
+    }
+
+    .reasoning-slider {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin: 2px 0 6px;
+    }
+
+    .reasoning-slider input {
+      padding: 0;
+      accent-color: #000000;
+    }
+
+    .reasoning-slider-value {
+      min-width: 52px;
+      color: #111827;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .role-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .role-badge.role-system { color: var(--color-system); }
+    .role-badge.role-user { color: var(--color-user); }
+    .role-badge.role-assistant { color: var(--color-assistant); }
+    .role-badge.role-tool { color: var(--color-tool); }
+
+    .role-select {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border: 1px solid #d1d5db;
+      width: auto;
+      border-radius: 0;
+      background-color: #ffffff;
+    }
+
+    .message-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .message-menu {
+      position: relative;
+    }
+
+    .message-menu summary {
+      cursor: pointer;
+      list-style: none;
+      border: 1px solid #d1d5db;
+      padding: 1px 7px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .message-menu summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .message-menu[open] .message-menu-body {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      z-index: 10;
+      min-width: 120px;
+      padding: 6px;
+      background: #ffffff;
+      border: 1px solid #111827;
+      box-shadow: 3px 3px 0 #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: stretch;
+    }
+
+    .action-btn {
+      background: transparent;
+      border: 0;
+      padding: 4px 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .action-btn:hover {
+      color: #000000;
+      text-decoration: underline;
+    }
+
+    .action-btn.delete-btn {
+      color: var(--color-system);
+    }
+
+    .action-btn.delete-btn:hover {
+      color: #b91c1c;
+    }
+
+    .action-btn:disabled {
+      opacity: 0.3;
+      text-decoration: none;
+      cursor: not-allowed;
+    }
+
+    .message-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .message-content-textarea {
+      min-height: 70px;
+      border: 1px solid #d1d5db;
+    }
+
+    /* Tool Call Items inside Assistant */
+    .tool-calls-section, .reasoning-section {
+      margin-top: 8px;
+      padding-left: 16px;
+      border-left: 2px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tool-calls-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .tool-call-item {
+      border: 1px solid #d1d5db;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tool-call-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .tool-call-id-input, .tool-call-name-input {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .tool-call-args-textarea {
+      min-height: 50px;
+      font-size: 11px;
+    }
+
+    .reasoning-toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .checkbox-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .reasoning-content-textarea {
+      min-height: 60px;
+      font-size: 11px;
+      color: var(--color-thought);
+      border-color: #fde68a;
+    }
+
+    .tool-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .tool-id-input, .tool-name-input {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    /* Output Container */
+    .output-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    /* Metrics Bar */
+    .metrics-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 0;
+      font-size: 11px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .metric-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 7px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      white-space: nowrap;
+    }
+
+    .metric-val {
+      color: #000000;
+      font-weight: 700;
+      max-width: 230px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .metric-select {
+      width: auto;
+      padding: 1px 18px 1px 4px;
+      font-size: 11px;
+      border-color: #e5e7eb;
+      background: #ffffff;
+    }
+
+    .display-select-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      font-size: 10px;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 600;
+    }
+
+    .render-summary {
+      color: #111827;
+      font-size: 12px;
+    }
+
+    .render-details summary {
+      cursor: pointer;
+      color: var(--text-secondary);
+      width: max-content;
+    }
+
+    .render-details-grid {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 16px;
+      font-size: 11px;
+    }
+
+    .render-details-grid strong {
+      color: #111827;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    /* Code View */
+    .code-viewer-container {
+      margin-top: 12px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      overflow: auto;
+      max-height: calc(100vh - 310px);
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: normal;
+      overflow-wrap: anywhere;
+    }
+
+    /* Highlighting markers */
+    .marker-delim {
+      display: inline;
+      padding: 1px 2px;
+      font-weight: 700;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      border-bottom: 1.5px solid transparent;
+    }
+
+    .marker-control { color: #4b5563; border-bottom-color: #d1d5db; }
+    .marker-system { color: #dc2626; border-bottom-color: #fca5a5; }
+    .marker-user { color: #059669; border-bottom-color: #a7f3d0; }
+    .marker-assistant { color: #2563eb; border-bottom-color: #bfdbfe; }
+    .marker-thought { color: #d97706; border-bottom-color: #fde68a; }
+    .marker-tool { color: #db2777; border-bottom-color: #fbcfe8; }
+
+    /* Token Visual Pastilles */
+    .token-pastille {
+      display: inline;
+      padding: 1px 2px;
+      margin: 0 1px;
+      border-radius: 2px;
+      background-color: var(--token-bg);
+      transition: opacity 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .token-pastille.token-fade {
+      opacity: 0.25;
+      filter: grayscale(100%);
+    }
+
+    .token-pastille.token-focus {
+      opacity: 1;
+      filter: none;
+      box-shadow: 0 0 0 1.5px var(--text-primary);
+      z-index: 2;
+    }
+
+    .special-token-line {
+      display: block;
+      margin-top: 6px;
+      margin-left: var(--token-indent, 0px);
+    }
+
+    .special-token-inline {
+      display: inline-block;
+      margin-left: 4px;
+    }
+
+    .render-action-row {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .auto-render-pill {
+      font-size: 11px;
+      color: var(--color-user);
+      border: 1px solid #a7f3d0;
+      background: #f0fdf4;
+      padding: 6px 8px;
+      white-space: nowrap;
+    }
+
+    /* Modal Settings */
+    .settings-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.1s ease;
+    }
+
+    .settings-modal.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      border: 2px solid #111827;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid #111827;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-footer {
+      padding: 16px;
+      border-top: 1px solid #111827;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .error-indicator {
+      font-size: 12px;
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      word-break: break-all;
+    }
+
+    .status-indicator {
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      word-break: break-all;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+    }
+
+    .toast {
+      background: #111827;
+      color: #ffffff;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #000000;
+    }
+
+    .repo-validation-status {
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .repo-validation-status.searching { color: var(--color-thought); }
+    .repo-validation-status.valid { color: var(--color-user); }
+    .repo-validation-status.invalid { color: var(--color-system); }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="#" class="brand">
+    <svg class="brand-logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px; height:20px; color:#000000; margin-right: 4px; vertical-align: middle;">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+      <path d="M9 9h6M9 13h6M9 17h4"/>
+    </svg>
+    <div>
+      <h1 style="color:#000000;">chattemplateplayground</h1>
+    </div>
+    <span class="brand-tag">v1.1</span>
+  </a>
+  
+  <div class="nav-actions">
+    <div class="runtime-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusLabel">Ready</span>
+    </div>
+    
+    <button class="btn-secondary btn-sm" id="openSettingsBtn" title="Hugging Face Settings">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      HF Token
+    </button>
+    
+    <button class="btn-secondary btn-sm" id="shareBtn" title="Copy Shareable Link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Share
+    </button>
+    
+    <a href="https://github.com" target="_blank" class="btn-secondary btn-sm btn-icon-only" title="GitHub Repository">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+    </a>
+  </div>
+</header>
+
+<main>
+  <!-- Left Side: Inputs and Settings -->
+  <section class="left-panel">
+    
+    <div class="section-container">
+      <h2 class="section-title">Model</h2>
+      <div class="section-body">
+        <div class="card-section">
+          <label for="repoId">
+            Hugging Face repo
+            <span class="label-hint" id="hfLinkContainer"></span>
+          </label>
+          <input id="repoId" list="repoSuggestions" placeholder="Search models or paste owner/model" autocomplete="off" />
+          <datalist id="repoSuggestions"></datalist>
+          <div id="repoValidationStatus" class="repo-validation-status"></div>
+        </div>
+        <select id="modelSelect" class="hidden"></select>
+        <input id="revision" class="hidden" value="main" />
+        <div id="modelNote" class="model-info-note hidden"></div>
+      </div>
+    </div>
+
+    <div class="hidden">
+      <select id="addGenerationPrompt"><option value="true" selected>true</option></select>
+      <select id="enableThinking"><option value="omit" selected>omit</option><option value="true">true</option></select>
+      <select id="reasoningEffort"><option value="omit" selected>omit</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select>
+    </div>
+
+    <!-- Messages Builder Section -->
+    <div class="section-container">
+      <h2 class="section-title">
+        Chat Messages
+        <div class="mode-switch">
+          <button class="mode-switch-btn active" id="modeVisualBtn">Visual Editor</button>
+          <button class="mode-switch-btn" id="modeJsonBtn">Raw JSON</button>
+        </div>
+      </h2>
+      <div class="section-body">
+        <!-- Visual Editor Container -->
+        <div id="visualMessagesWrapper">
+          <div class="visual-messages-list" id="visualMessagesContainer"></div>
+          <button class="btn-secondary btn-sm" id="addMessageBtn" style="margin-top: 14px; width: 100%;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Add Message
+          </button>
+        </div>
+        
+        <!-- JSON Editor Container -->
+        <div id="jsonMessagesWrapper" class="hidden">
+          <textarea id="messages" spellcheck="false" style="min-height: 280px;"></textarea>
+          <div class="row" style="margin-top: 8px; justify-content: space-between; align-items: center;">
+            <span class="label-hint">Standard OpenAI message JSON format.</span>
+            <button class="btn-secondary btn-sm" id="formatJsonBtn">Format JSON</button>
+          </div>
+          <div class="error-indicator hidden" id="messagesError"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools Config Section -->
+    <details class="section-container">
+      <summary class="section-title">Tools</summary>
+      <div class="section-body">
+        <div style="max-width: 180px;">
+          <select id="toolPresetSelect" style="padding: 2px 4px; font-size: 11px;">
+            <option value="none">Empty (No tools)</option>
+            <option value="weather" selected>Preset: Weather</option>
+            <option value="search">Preset: Search</option>
+            <option value="multi">Preset: Multi</option>
+          </select>
+        </div>
+        <textarea id="tools" spellcheck="false" style="min-height: 120px;"></textarea>
+        <div class="error-indicator hidden" id="toolsError"></div>
+      </div>
+    </details>
+    
+  </section>
+
+  <!-- Right Side: Sticky Output Viewer -->
+  <section class="right-panel-sticky">
+    <div class="output-container">
+      <h2 class="section-title">Rendered Prompt</h2>
+
+      <!-- Metrics Row -->
+      <div class="metrics-row" id="metrics">
+        <div class="render-summary" id="renderSummary">—</div>
+        <details class="render-details">
+          <summary>Details</summary>
+          <div class="render-details-grid">
+            <span>Characters <strong id="metricChars">0</strong></span>
+            <span>Bytes <strong id="metricBytes">0</strong></span>
+            <span>Lines <strong id="metricLines">0</strong></span>
+            <span>Rendered tokens <strong id="metricTokens">0</strong></span>
+            <span>Unique token IDs <strong id="metricUniqueTokens">0</strong></span>
+            <span>Template source <strong id="metricTemplateSource">—</strong></span>
+            <span>Render engine <strong id="metricRenderEngine">—</strong></span>
+            <span>Tokenizer <strong id="metricTokenizationEngine">—</strong></span>
+          </div>
+        </details>
+      </div>
+
+      <!-- Live Code Output Viewer -->
+      <div class="code-viewer-container">
+        <pre id="output">Loading and rendering prompt...</pre>
+      </div>
+
+    </div>
+    
+    <div class="error-indicator hidden" id="status" style="margin-top: 0;"></div>
+  </section>
+</main>
+
+<!-- Hugging Face Token Settings Modal -->
+<div class="settings-modal" id="settingsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Hugging Face Hub Settings
+      </h3>
+      <button class="action-btn" id="closeSettingsBtn" style="padding: 4px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 8px;">
+        Some models are gated (e.g. Meta Llama 3) or hosted in private repositories. Provide a Hugging Face User Access Token (Read) to fetch their templates directly.
+      </p>
+      <div class="card-section">
+        <label for="hfToken">Hugging Face API Token</label>
+        <input type="password" id="hfToken" placeholder="hf_..." />
+      </div>
+      <p class="label-hint" style="color: var(--text-muted);">
+        This token is stored locally in your browser's local storage and is sent only to the official Hugging Face API (huggingface.co).
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary btn-sm" id="clearTokenBtn">Clear Token</button>
+      <button class="btn-primary btn-sm" id="saveTokenBtn">Save & Apply</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script type="module">
+  // Explicit serializer for values crossing into template engines. Do not mutate built-in prototypes.
+  function mapToPlainObj(val) {
+    if (val && typeof val === 'object' && typeof val.type === 'string' && val.type.endsWith('Value') && 'value' in val) {
+      return mapToPlainObj(val.value);
+    }
+    if (val instanceof Map) {
+      const obj = {};
+      for (const [k, v] of val.entries()) {
+        obj[k] = mapToPlainObj(v);
+      }
+      return obj;
+    }
+    if (Array.isArray(val)) {
+      return val.map(mapToPlainObj);
+    }
+    if (val && typeof val === 'object') {
+      const obj = {};
+      for (const k in val) {
+        obj[k] = mapToPlainObj(val[k]);
+      }
+      return obj;
+    }
+    return val;
+  }
+  import { AutoTokenizer } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/dist/transformers.min.js";
+
+  // Predefined Models metadata
+  const MODELS = [
+    {
+      key: "llama33",
+      label: "Llama 3.3 70B IT",
+      repo: "meta-llama/Llama-3.3-70B-Instruct",
+      note: "Standard Llama 3.3 template. Supports system, user, assistant, and tool calls. Uses <|start_header_id|> tags.",
+      defaults: { reasoning_effort: "omit", enable_thinking: "omit" },
+      tags: ["tools", "system", "popular"],
+      logo: `<svg class="model-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
+    },
+    {
+      key: "deepseek_r1",
+      label: "DeepSeek R1",
+      repo: "deepseek-ai/DeepSeek-R1",
+      note: "DeepSeek's reasoning model. Supports <think> blocks natively. Tool use templates can be rendered.",
+      defaults: { reasoning_effort: "omit", enable_thinking: "omit" },
+      tags: ["thinking", "system", "popular"],
+      logo: `<svg class="model-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
+    },
+    {
+      key: "deepseek_v4_pro",
+      label: "DeepSeek V4 Pro",
+      repo: "deepseek-ai/DeepSeek-V4-Pro",
+      note: "DeepSeek V4 Pro currently ships without a chat_template field, so chattemplateplayground falls back to the compatible DeepSeek V3 template.",
+      defaults: { reasoning_effort: "omit", enable_thinking: "omit" },
+      tags: ["thinking", "system"],
+      logo: `<svg class="model-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
+    },
+    {
+      key: "qwen25_instruct",
+      label: "Qwen 2.5 72B IT",
+      repo: "Qwen/Qwen2.5-72B-Instruct",
+      note: "Qwen 2.5 template. Full support for tool calling, system, user, assistant roles using ChatML syntax.",
+      defaults: { reasoning_effort: "omit", enable_thinking: "omit" },
+      tags: ["tools", "system", "popular"],
+      logo: `<svg class="model-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
+    },
+    {
+      key: "phi4",
+      label: "Phi-4 Instruct",
+      repo: "microsoft/phi-4",
+      note: "Phi-4 chat template. Integrates system instructions, user, assistant, and thinking tags.",
+      defaults: { reasoning_effort: "omit", enable_thinking: "omit" },
+      tags: ["thinking", "system"],
+      logo: `<svg class="model-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
+    },
+    {
+      key: "gemma2_it",
+      label: "Gemma 2 27B IT",
+      repo: "google/gemma-2-27b-it",
+      note: "Gemma 2 template utilizing <start_of_turn> and <end_of_turn> separators.",
+      defaults: { reasoning_effort: "omit", enable_thinking: "omit" },
+      tags: ["system", "popular"],
+      logo: `<svg class="model-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
+    },
+    {
+      key: "gpt_oss",
+      label: "GPT-OSS Harmony",
+      repo: "openai/gpt-oss-20b",
+      note: "Harmony format with channel/recipient routing. Tool responses render as dedicated tool messages.",
+      defaults: { reasoning_effort: "medium", enable_thinking: "omit" },
+      tags: ["tools"],
+      logo: `<svg class="model-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
+    }
+  ];
+
+  const DEFAULT_TOOL = [
+    {
+      type: "function",
+      function: {
+        name: "get_weather",
+        description: "Get the current weather for a city.",
+        parameters: {
+          type: "object",
+          properties: {
+            city: { type: "string", description: "City name, for example Montreal." },
+            unit: { type: "string", enum: ["celsius", "fahrenheit"], description: "Temperature unit." }
+          },
+          required: ["city"]
+        }
+      }
+    }
+  ];
+
+  const DEFAULT_MESSAGES_STRING_ARGS = [
+    { role: "system", content: "You are a concise assistant. Use tools when needed." },
+    { role: "user", content: "What is the weather in Montreal?" },
+    {
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        {
+          id: "call_weather_1",
+          type: "function",
+          function: {
+            name: "get_weather",
+            arguments: JSON.stringify({ city: "Montreal", unit: "celsius" })
+          }
+        }
+      ]
+    },
+    {
+      role: "tool",
+      tool_call_id: "call_weather_1",
+      name: "get_weather",
+      content: JSON.stringify({ city: "Montreal", temperature: 23, unit: "celsius", condition: "cloudy" })
+    },
+    { role: "assistant", content: "It is 23°C and cloudy in Montreal." },
+    { role: "user", content: "Should I bring a jacket?" }
+  ];
+
+  const DEFAULT_MESSAGES_OBJECT_ARGS = [
+    { role: "system", content: "You are a concise assistant. Use tools when needed." },
+    { role: "user", content: "What is the weather in Montreal?" },
+    {
+      role: "assistant",
+      content: "",
+      tool_calls: [
+        {
+          id: "call_weather_1",
+          type: "function",
+          function: {
+            name: "get_weather",
+            arguments: { city: "Montreal", unit: "celsius" }
+          }
+        }
+      ]
+    },
+    {
+      role: "tool",
+      tool_call_id: "call_weather_1",
+      name: "get_weather",
+      content: JSON.stringify({ city: "Montreal", temperature: 23, unit: "celsius", condition: "cloudy" })
+    },
+    { role: "assistant", content: "It is 23°C and cloudy in Montreal." },
+    { role: "user", content: "Should I bring a jacket?" }
+  ];
+
+  const TOOL_PRESETS = {
+    none: [],
+    weather: DEFAULT_TOOL,
+    search: [
+      {
+        type: "function",
+        function: {
+          name: "web_search",
+          description: "Search the web for a query.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Search query string." },
+              max_results: { type: "integer", default: 5, description: "Maximum number of search results to return." }
+            },
+            required: ["query"]
+          }
+        }
+      }
+    ],
+    multi: [
+      ...DEFAULT_TOOL,
+      {
+        type: "function",
+        function: {
+          name: "calculate_expression",
+          description: "Evaluate a mathematical expression.",
+          parameters: {
+            type: "object",
+            properties: {
+              expression: { type: "string", description: "Math expression, e.g. '2 * pi * 5'" }
+            },
+            required: ["expression"]
+          }
+        }
+      }
+    ]
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const modelSelect = $("modelSelect");
+  const repoId = $("repoId");
+  const revision = $("revision");
+  const messagesEl = $("messages");
+  const toolsEl = $("tools");
+  const output = $("output");
+  const status = $("status");
+  const modelNote = $("modelNote");
+  const reasoningEffort = $("reasoningEffort");
+  const enableThinking = $("enableThinking");
+  const addGenerationPrompt = $("addGenerationPrompt");
+  const statusDot = $("statusDot");
+  const statusLabel = $("statusLabel");
+  const repoValidationStatus = $("repoValidationStatus");
+  const repoSuggestions = $("repoSuggestions");
+
+  let currentTab = "rendered";
+  let renderedText = "";
+  let templateText = "";
+  let tokenText = "";
+  let renderedTokens = [];
+  let templateSource = "—";
+  let renderEngine = "—";
+  let tokenizationEngine = "—";
+  let renderRequestId = 0;
+  let messageEditorMode = "visual"; // visual or json
+  const tokenizerCache = new Map();
+  const templateCache = new Map();
+  const templateSourceCache = new Map();
+
+  function setRuntimeStatus(state, label) {
+    statusDot.className = "status-dot " + state;
+    statusLabel.textContent = label;
+  }
+
+  function setStatus(text, kind = "") {
+    if (kind === "bad") {
+      status.textContent = text;
+      status.className = "error-indicator visible";
+      setRuntimeStatus("error", "Rendering Error");
+      return;
+    }
+
+    const isProgress = text && text !== "Ready" && text !== "Pyodide Ready";
+    status.textContent = isProgress ? text : "";
+    status.className = isProgress ? "status-indicator visible" : "status-indicator hidden";
+
+    if (text.includes("Loading") || text.includes("Fetching") || text.includes("Initializing") || text.includes("Rendering") || text.includes("Installing")) {
+      setRuntimeStatus("loading", "Processing...");
+    } else {
+      setRuntimeStatus("ready", "Ready");
+    }
+  }
+
+  function showToast(message) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+      <span>${message}</span>
+    `;
+    $("toastContainer").appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = "none";
+      toast.style.opacity = "0";
+      setTimeout(() => toast.remove(), 300);
+    }, 2500);
+  }
+
+  function updateMetrics(text) {
+    const bytes = new TextEncoder().encode(text).length;
+    const lines = text.length ? text.split("\n").length : 0;
+    const tokenIds = renderedTokens && renderedTokens.length
+      ? renderedTokens.map(tok => tok.id)
+      : [];
+
+    $("metricChars").textContent = text.length.toLocaleString();
+    $("metricBytes").textContent = bytes.toLocaleString();
+    $("metricLines").textContent = lines.toLocaleString();
+    $("metricTokens").textContent = tokenIds.length ? tokenIds.length.toLocaleString() : "—";
+    $("metricUniqueTokens").textContent = tokenIds.length ? new Set(tokenIds).size.toLocaleString() : "—";
+    $("metricTemplateSource").textContent = templateSource;
+    $("metricRenderEngine").textContent = renderEngine;
+    $("metricTokenizationEngine").textContent = tokenizationEngine;
+
+    const tokenSummary = tokenIds.length ? `${tokenIds.length.toLocaleString()} tokens` : "tokens unavailable";
+    const templateSummary = templateSource.includes("fallback") ? "fallback template" : templateSource !== "—" ? "native template" : "template unavailable";
+    const engineSummary = renderEngine === "—" ? "engine unavailable" : renderEngine.replace("Transformers.js apply_chat_template", "Transformers.js").replace("Pyodide Python Jinja2 fallback", "Pyodide");
+    const tokenizerSummary = tokenizationEngine === "—" ? "tokenizer unavailable" : tokenizationEngine;
+    $("renderSummary").textContent = `${tokenSummary} · ${text.length.toLocaleString()} chars · ${templateSummary} · ${engineSummary} · ${tokenizerSummary}`;
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  async function getTokensList(tokenizer, tokenIds, renderedText) {
+    const decodeFn = async (ids) => tokenizer.decode(ids);
+    return getTokensListFromDecode(decodeFn, tokenIds, renderedText, tokenizer);
+  }
+
+  async function getTokensListFromDecode(decodeFn, tokenIds, renderedText, tokenizer = null) {
+    const tokens = [];
+    if (!tokenIds || tokenIds.length === 0) return tokens;
+    
+    // Convert to standard JS array of numbers
+    const ids = Array.isArray(tokenIds) ? tokenIds : Array.from(tokenIds);
+    
+    // Try offset mapping first
+    try {
+      if (!tokenizer) throw new Error("offset mapping unavailable without tokenizer callable");
+      const encoded = await tokenizer(renderedText, { return_offsets_mapping: true });
+      if (encoded && encoded.offset_mapping) {
+        const offsets = encoded.offset_mapping;
+        const encodedIds = encoded.input_ids || ids;
+        let offsetsArray = Array.isArray(offsets) ? offsets : (offsets.tolist ? offsets.tolist() : Array.from(offsets));
+        let idsArray = Array.isArray(encodedIds) ? encodedIds : (encodedIds.toList ? encodedIds.toList() : Array.from(encodedIds));
+        
+        for (let i = 0; i < offsetsArray.length; i++) {
+          const mapping = offsetsArray[i];
+          if (Array.isArray(mapping) && mapping.length === 2) {
+            const [start, end] = mapping;
+            const tokId = idsArray[i];
+            const tokStr = renderedText.slice(start, end);
+            tokens.push({ id: Number(tokId), text: tokStr });
+          }
+        }
+        if (tokens.length > 0) return tokens;
+      }
+    } catch (e) {
+      console.warn("Offset mapping failed, falling back to incremental decoding:", e);
+    }
+    
+    // Fallback: Incremental decoding
+    try {
+      let prevText = "";
+      for (let i = 0; i < ids.length; i++) {
+        const subIds = ids.slice(0, i + 1);
+        const currText = await decodeFn(subIds);
+        let tokStr = currText.slice(prevText.length);
+        prevText = currText;
+        tokens.push({ id: Number(ids[i]), text: tokStr });
+      }
+    } catch (e) {
+      console.error("Incremental decoding tokenization failed:", e);
+      // Absolute fallback: decode one by one
+      for (let i = 0; i < ids.length; i++) {
+        try {
+          const tokStr = await decodeFn([ids[i]]);
+          tokens.push({ id: Number(ids[i]), text: tokStr });
+        } catch (err) {
+          tokens.push({ id: Number(ids[i]), text: `[Token ${ids[i]}]` });
+        }
+      }
+    }
+    return tokens;
+  }
+
+  function normalizeTokenIdList(tokenized) {
+    if (tokenized && typeof tokenized.toList === 'function') {
+      return tokenized.toList();
+    }
+    if (tokenized && tokenized.data) {
+      return Array.from(tokenized.data);
+    }
+    if (Array.isArray(tokenized) || ArrayBuffer.isView(tokenized)) {
+      return Array.from(tokenized);
+    }
+    return [];
+  }
+
+  function getRawBase(modelId, rev) {
+    return `https://huggingface.co/${modelId}/raw/${encodeURIComponent(rev || "main")}`;
+  }
+
+  function getResolveBase(modelId, rev) {
+    return `https://huggingface.co/${modelId}/resolve/${encodeURIComponent(rev || "main")}`;
+  }
+
+  async function fetchJsonFile(modelId, rev, filename) {
+    return JSON.parse(await fetchText(`${getRawBase(modelId, rev)}/${filename}`));
+  }
+
+  function getKimiCompatiblePatStr() {
+    // JS-compatible approximation of Kimi's Python regex. The original uses regex-set
+    // intersection and inline case groups unsupported by JavaScript's RegExp constructor.
+    return [
+      String.raw`[\p{Script=Han}]+`,
+      String.raw`[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?:'[sStTrReEvVmMlLdD])?`,
+      String.raw`[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?:'[sStTrReEvVmMlLdD])?`,
+      String.raw`\p{N}{1,3}`,
+      String.raw` ?[^\s\p{L}\p{N}]+[\r\n]*`,
+      String.raw`\s*[\r\n]+`,
+      String.raw`\s+(?!\S)`,
+      String.raw`\s+`,
+    ].join("|");
+  }
+
+  function buildSpecialTokensFromConfig(cfg) {
+    const specialTokens = {};
+    const decoder = cfg.added_tokens_decoder || {};
+    for (const [id, tokenInfo] of Object.entries(decoder)) {
+      const content = typeof tokenInfo === "string" ? tokenInfo : tokenInfo.content;
+      const isSpecial = typeof tokenInfo === "string" ? true : tokenInfo.special !== false;
+      if (content && isSpecial) specialTokens[content] = Number(id);
+    }
+    for (const key of ["bos_token", "eos_token", "unk_token", "pad_token"]) {
+      const tok = cfg[key];
+      const content = typeof tok === "string" ? tok : tok?.content;
+      if (content && specialTokens[content] === undefined) {
+        const found = Object.entries(decoder).find(([, info]) => (typeof info === "string" ? info : info.content) === content);
+        if (found) specialTokens[content] = Number(found[0]);
+      }
+    }
+    return specialTokens;
+  }
+
+  function tiktokenModelToJsTiktokenRanks(modelText, patStr) {
+    const rows = modelText.trim().split(/\r?\n/)
+      .map(line => line.trim().split(/\s+/))
+      .filter(parts => parts.length >= 2)
+      .map(([token, rank]) => ({ token, rank: Number(rank) }))
+      .filter(row => Number.isFinite(row.rank))
+      .sort((a, b) => a.rank - b.rank);
+
+    const compressedLines = [];
+    let groupStartRank = null;
+    let groupTokens = [];
+    let expectedRank = null;
+
+    const flush = () => {
+      if (groupTokens.length) compressedLines.push(`x ${groupStartRank} ${groupTokens.join(" ")}`);
+      groupStartRank = null;
+      groupTokens = [];
+      expectedRank = null;
+    };
+
+    for (const row of rows) {
+      if (expectedRank === null || row.rank !== expectedRank) {
+        flush();
+        groupStartRank = row.rank;
+        expectedRank = row.rank;
+      }
+      groupTokens.push(row.token);
+      expectedRank += 1;
+    }
+    flush();
+
+    return {
+      pat_str: patStr,
+      bpe_ranks: compressedLines.join("\n"),
+      special_tokens: {},
+    };
+  }
+
+  async function tryTiktokenAdapter(modelId, rev, text) {
+    const cfg = await fetchJsonFile(modelId, rev, "tokenizer_config.json");
+    const tokenizerClass = String(cfg.tokenizer_class || "");
+    const autoMap = JSON.stringify(cfg.auto_map || {});
+    const looksLikeTiktoken = tokenizerClass.toLowerCase().includes("tiktoken") || autoMap.toLowerCase().includes("tiktoken");
+    if (!looksLikeTiktoken) throw new Error("tokenizer_config.json does not describe a tiktoken tokenizer");
+
+    const modelText = await fetchText(`${getResolveBase(modelId, rev)}/tiktoken.model`);
+    if (modelText.startsWith("version https://git-lfs.github.com/spec/")) {
+      throw new Error("tiktoken.model resolved to a Git LFS pointer instead of the vocabulary file");
+    }
+    const { Tiktoken } = await import("https://cdn.jsdelivr.net/npm/js-tiktoken@1.0.20/lite/+esm");
+    const patStr = getKimiCompatiblePatStr();
+    const specialTokens = buildSpecialTokensFromConfig(cfg);
+    const ranks = tiktokenModelToJsTiktokenRanks(modelText, patStr);
+    const enc = new Tiktoken(ranks, specialTokens);
+    const ids = enc.encode(text, "all", []);
+    const decodeFn = async (subIds) => enc.decode(subIds);
+    return {
+      ids,
+      tokens: await getTokensListFromDecode(decodeFn, ids, text),
+      engine: `${tokenizerClass || "tiktoken"} JS adapter`,
+    };
+  }
+
+  async function tokenizeRenderedText(modelId, rev, text, tokenizer = null) {
+    const errors = [];
+
+    if (tokenizer) {
+      try {
+        const encoded = await tokenizer.encode(text);
+        const ids = normalizeTokenIdList(encoded);
+        if (ids.length) {
+          return {
+            ids,
+            tokens: await getTokensList(tokenizer, ids, text),
+            engine: "Transformers.js encode(rendered text)",
+          };
+        }
+      } catch (err) {
+        errors.push(`Transformers.js encode: ${err.message || err}`);
+      }
+    }
+
+    try {
+      return await tryTiktokenAdapter(modelId, rev, text);
+    } catch (err) {
+      errors.push(`JS tiktoken adapter: ${err.message || err}`);
+    }
+
+    throw new Error(errors.join("\n"));
+  }
+
+  function setTokenizationResult(result) {
+    const ids = result.ids || [];
+    renderedTokens = result.tokens || [];
+    tokenizationEngine = result.engine || "exact tokenizer";
+    tokenText = JSON.stringify(ids, (key, val) => typeof val === 'bigint' ? Number(val) : val, 2);
+  }
+
+  function setTokenizationError(err) {
+    renderedTokens = [];
+    tokenizationEngine = "unavailable";
+    tokenText = `Tokenization failed for rendered prompt:\n${err.stack || err.message || err}`;
+  }
+
+  function highlightPrompt(text) {
+    if (!text) return "";
+    
+    const regex = /(<(?:\|(?!['"])[^>]+|[^>'"]+?\|)>|<\/?(?:s|bos|eos|sop|eop|start_of_turn|end_of_turn|tool_call|tool_response|tools|arg_key|arg_value|thought|thought_context|reasoning|think|action|observation|plugin|plugins|plugin_call|plugin_response|recipient|r|p|system|user|assistant)(?:\s+[^>]*?)?>|\[\/?(?:[A-Z0-9_]{3,25}|gMASK|sMASK)\]|<<\/?SYS>>)/gi;
+    
+    const parts = text.split(regex);
+    const htmlParts = parts.map((part, index) => {
+      if (index % 2 === 1) {
+        let type = "control";
+        const lower = part.toLowerCase();
+        
+        if (lower.includes("system") || lower.includes("sys")) {
+          type = "system";
+        } else if (lower.includes("user") || lower.includes("inst")) {
+          type = "user";
+        } else if (lower.includes("assistant")) {
+          type = "assistant";
+        } else if (lower.includes("thought") || lower.includes("think") || lower.includes("reasoning")) {
+          type = "thought";
+        } else if (
+          lower.includes("tool") || 
+          lower.includes("plugin") || 
+          lower.includes("observation") ||
+          lower.includes("action") ||
+          lower.includes("arg_key") ||
+          lower.includes("arg_value")
+        ) {
+          type = "tool";
+        }
+        
+        return `<span class="marker-delim marker-${type}">${escapeHtml(part)}</span>`;
+      } else {
+        return escapeHtml(part);
+      }
+    });
+    
+    return htmlParts.join("");
+  }
+
+  function showTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
+    const text = tab === "template" ? templateText : tab === "tokens" ? tokenText : renderedText;
+    if (tab === "rendered") {
+      if (renderedTokens && renderedTokens.length > 0) {
+        const colors = [
+          "rgba(107, 160, 237, 0.22)", // Blue
+          "rgba(139, 218, 142, 0.22)", // Green
+          "rgba(247, 203, 114, 0.22)", // Yellow
+          "rgba(247, 137, 114, 0.22)", // Orange
+          "rgba(209, 138, 237, 0.22)", // Purple
+          "rgba(114, 232, 247, 0.22)", // Cyan
+        ];
+        let html = "";
+        const colorMode = "special";
+        renderedTokens.forEach((tok, index) => {
+          const text = tok.text.trim();
+          const isSpecial = /^<\|.*\|>$|^<[^>]+>$|^\[[A-Z_]+\]$/.test(text);
+          const startsMessage = /system|user|assistant|tool|start_header|im_/.test(text.toLowerCase());
+          let color = colors[index % colors.length];
+          if (colorMode === "id") {
+            color = colors[Math.abs(Number(tok.id)) % colors.length];
+          } else if (colorMode === "special") {
+            color = isSpecial ? "rgba(17, 24, 39, 0.14)" : "rgba(156, 163, 175, 0.10)";
+          }
+          const escapedText = escapeHtml(tok.text);
+          const tooltip = `Token ID: ${tok.id}\nIndex: ${index}\nColor mode: ${colorMode}\nText: ${JSON.stringify(tok.text)}`;
+          const layoutClass = isSpecial && startsMessage ? "special-token-line" : isSpecial ? "special-token-inline" : "";
+          const indent = isSpecial && !startsMessage ? 16 : 0;
+          html += `<span class="token-pastille ${layoutClass}" data-token-id="${tok.id}" data-index="${index}" style="--token-bg: ${color}; --token-indent: ${indent}px;" title="${escapeHtml(tooltip)}">${escapedText}</span>`;
+        });
+        output.innerHTML = html;
+      } else {
+        output.innerHTML = highlightPrompt(text || "");
+      }
+    } else {
+      output.textContent = text || "";
+    }
+    updateMetrics(text || "");
+  }
+
+  function selectedModel() {
+    const selectedPreset = MODELS.find(m => m.key === modelSelect.value);
+    if (selectedPreset) return selectedPreset;
+    return {
+      key: "custom",
+      label: "Custom Repo",
+      repo: repoId.value.trim(),
+      note: "Custom Hugging Face repository.",
+      defaults: { reasoning_effort: "omit", enable_thinking: "omit" }
+    };
+  }
+
+  function syncModelDefaults() {
+    const m = selectedModel();
+    if (m.key !== "custom") {
+      repoId.value = m.repo;
+      modelNote.textContent = m.note;
+      reasoningEffort.value = m.defaults.reasoning_effort;
+      enableThinking.value = m.defaults.enable_thinking;
+      
+      const messages = m.key === "glm51" ? DEFAULT_MESSAGES_OBJECT_ARGS : DEFAULT_MESSAGES_STRING_ARGS;
+      messagesEl.value = JSON.stringify(messages, null, 2);
+      toolsEl.value = JSON.stringify(DEFAULT_TOOL, null, 2);
+      $("toolPresetSelect").value = "weather";
+      
+      // Update preset cards UI active state
+      document.querySelectorAll(".model-preset-link").forEach(card => {
+        card.classList.toggle("active", card.dataset.key === m.key);
+      });
+    } else {
+      // Clear preset cards active state
+      document.querySelectorAll(".model-preset-link").forEach(card => card.classList.remove("active"));
+    }
+    
+    updateHuggingFaceLink();
+    
+    if (messageEditorMode === "visual") {
+      syncJSONToVisual();
+    }
+    
+    validateAndSave();
+  }
+
+  function updateHuggingFaceLink() {
+    const rId = repoId.value.trim();
+    const container = $("hfLinkContainer");
+    if (rId && rId.includes("/")) {
+      container.innerHTML = `&middot; <a href="https://huggingface.co/${rId}" target="_blank" style="color: var(--accent-cyan); text-transform:none; font-weight:normal;">View Hub Repo</a>`;
+    } else {
+      container.innerHTML = "";
+    }
+  }
+
+  async function getTokenizer(modelId, rev) {
+    const key = `${modelId}@${rev || "main"}`;
+    if (!tokenizerCache.has(key)) {
+      setStatus(`Loading tokenizer for ${modelId}. Downloading config metadata...`);
+      const token = $("hfToken").value.trim();
+      const options = { revision: rev || "main" };
+      if (token) {
+        options.credentials = { headers: { "Authorization": `Bearer ${token}` } };
+      }
+      const tok = await AutoTokenizer.from_pretrained(modelId, options);
+      tokenizerCache.set(key, tok);
+    }
+    return tokenizerCache.get(key);
+  }
+
+  async function fetchText(url) {
+    const headers = {};
+    const token = $("hfToken").value.trim();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const res = await fetch(url, { mode: "cors", headers });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(`Unauthorized (401/403). Gated model or incorrect API token. Add a token in the Settings modal.`);
+      }
+      throw new Error(`${res.status} ${res.statusText}`);
+    }
+    return await res.text();
+  }
+
+  async function getChatTemplate(modelId, rev) {
+    const key = `${modelId}@${rev || "main"}`;
+    if (templateCache.has(key)) {
+      templateSource = templateSourceCache.get(key) || `${modelId}@${rev || "main"} cached`;
+      return templateCache.get(key);
+    }
+
+    const encodedRev = encodeURIComponent(rev || "main");
+    const base = `https://huggingface.co/${modelId}/raw/${encodedRev}`;
+
+    try {
+      setStatus(`Fetching chat_template.jinja for ${modelId}...`);
+      const text = await fetchText(`${base}/chat_template.jinja`);
+      templateCache.set(key, text);
+      templateSource = `${modelId}@${rev || "main"}/chat_template.jinja`;
+      templateSourceCache.set(key, templateSource);
+      return text;
+    } catch (firstErr) {
+      try {
+        setStatus(`chat_template.jinja not found; trying tokenizer_config.json...`);
+        const cfgText = await fetchText(`${base}/tokenizer_config.json`);
+        const cfg = JSON.parse(cfgText);
+        if (!cfg.chat_template) throw new Error("tokenizer_config.json lacks a chat_template field");
+        templateCache.set(key, cfg.chat_template);
+        templateSource = `${modelId}@${rev || "main"}/tokenizer_config.json`;
+        templateSourceCache.set(key, templateSource);
+        return cfg.chat_template;
+      } catch (secondErr) {
+        if (modelId.toLowerCase().startsWith("deepseek-ai/deepseek-")) {
+          try {
+            setStatus(`${modelId} has no bundled chat template; using DeepSeek V3 compatible template...`);
+            const fallbackCfgText = await fetchText("https://huggingface.co/deepseek-ai/DeepSeek-V3/raw/main/tokenizer_config.json");
+            const fallbackCfg = JSON.parse(fallbackCfgText);
+            if (!fallbackCfg.chat_template) throw new Error("DeepSeek V3 fallback lacks a chat_template field");
+            templateCache.set(key, fallbackCfg.chat_template);
+            templateSource = "deepseek-ai/DeepSeek-V3@main/tokenizer_config.json fallback";
+            templateSourceCache.set(key, templateSource);
+            return fallbackCfg.chat_template;
+          } catch (fallbackErr) {
+            throw new Error(
+              `Could not fetch chat template. ` +
+              `Tried chat_template.jinja (${firstErr.message}), tokenizer_config.json (${secondErr.message}), ` +
+              `and DeepSeek V3 fallback (${fallbackErr.message}).`
+            );
+          }
+        }
+
+        throw new Error(
+          `Could not fetch chat template. ` +
+          `Tried chat_template.jinja (${firstErr.message}) and tokenizer_config.json (${secondErr.message}).`
+        );
+      }
+    }
+  }
+
+  function parseJsonTextarea(el, label) {
+    try {
+      const val = el.value.trim();
+      return val ? JSON.parse(val) : [];
+    } catch (err) {
+      throw new Error(`${label} JSON error: ${err.message}`);
+    }
+  }
+
+  function buildTemplateOptions() {
+    addGenerationPrompt.value = "true";
+    const opts = {
+      tokenize: false,
+      add_generation_prompt: true,
+    };
+    if (enableThinking.value !== "omit") opts.enable_thinking = enableThinking.value === "true";
+    if (reasoningEffort.value !== "omit") opts.reasoning_effort = reasoningEffort.value;
+    return opts;
+  }
+
+  let pyodideInstance = null;
+  let pyodideReadyPromise = null;
+
+  function initPyodide() {
+    if (pyodideReadyPromise) return pyodideReadyPromise;
+    pyodideReadyPromise = (async () => {
+      setStatus("Initializing Pyodide (WebAssembly Python)...");
+      const py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/" });
+      await py.loadPackage("micropip");
+      const micropip = py.pyimport("micropip");
+      setStatus("Installing jinja2 in WebAssembly Python context...");
+      await micropip.install("jinja2");
+      pyodideInstance = py;
+      setStatus("Pyodide Ready", "good");
+      return py;
+    })();
+    return pyodideReadyPromise;
+  }
+
+  async function renderJinjaViaPyodide(templateStr, context) {
+    if (!pyodideInstance) {
+      await initPyodide();
+    }
+    pyodideInstance.globals.set("template_str", templateStr);
+    pyodideInstance.globals.set("context_js", pyodideInstance.toPy(mapToPlainObj(context)));
+    
+    return pyodideInstance.runPython(`
+import json
+import datetime
+import jinja2
+from jinja2 import Environment
+
+try:
+    from markupsafe import Markup
+except ImportError:
+    try:
+        from jinja2 import Markup
+    except ImportError:
+        Markup = lambda x: x
+
+def custom_tojson(value, *args, **kwargs):
+    allowed_keys = {'skipkeys', 'ensure_ascii', 'check_circular', 'allow_nan', 'cls', 'indent', 'separators', 'default', 'sort_keys'}
+    filtered_kwargs = {k: v for k, v in kwargs.items() if k in allowed_keys}
+    return Markup(json.dumps(value, **filtered_kwargs))
+
+def custom_finalize(value):
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    try:
+        # handle pyodide JsProxy/Map proxies
+        if hasattr(value, "to_py"):
+            py_val = value.to_py()
+            if isinstance(py_val, (dict, list)):
+                return json.dumps(py_val)
+    except:
+        pass
+    return str(value)
+
+def raise_exception(message):
+    raise Exception(message)
+
+def strftime_now(format):
+    return datetime.datetime.now().strftime(format)
+
+env = Environment(
+    trim_blocks=True,
+    lstrip_blocks=True,
+    finalize=custom_finalize,
+    extensions=['jinja2.ext.loopcontrols', 'jinja2.ext.do']
+)
+env.globals['raise_exception'] = raise_exception
+env.globals['strftime_now'] = strftime_now
+env.filters['tojson'] = custom_tojson
+
+template = env.from_string(template_str)
+rendered = template.render(**context_js)
+rendered
+    `);
+  }
+
+  function makeStringifiable(obj) {
+    if (obj && typeof obj === "object") {
+      try {
+        Object.defineProperty(obj, 'toString', {
+          value: function() { return JSON.stringify(this); },
+          enumerable: false,
+          configurable: true
+        });
+      } catch (e) {}
+    }
+    return obj;
+  }
+
+  function normalizeMessages(messages) {
+    if (!messages || !Array.isArray(messages)) return messages;
+    const cloned = JSON.parse(JSON.stringify(messages));
+    for (const msg of cloned) {
+      if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+        for (const tc of msg.tool_calls) {
+          if (tc.function && typeof tc.function.arguments === "string") {
+            try {
+              const parsed = JSON.parse(tc.function.arguments);
+              makeStringifiable(parsed);
+              tc.function.arguments = parsed;
+            } catch (e) {
+              console.warn("Failed to parse tool_call arguments:", e);
+            }
+          }
+        }
+      }
+    }
+
+    // Many chat templates, especially Harmony/GPT-OSS, reject orphan tool messages.
+    // A tool message is only valid immediately after an assistant message with tool_calls.
+    const normalized = [];
+    let pendingToolResults = 0;
+    for (const msg of cloned) {
+      if (msg.role === "tool") {
+        if (pendingToolResults > 0) {
+          normalized.push(msg);
+          pendingToolResults -= 1;
+        } else {
+          console.warn("Dropping orphan tool message before rendering:", msg);
+        }
+        continue;
+      }
+
+      normalized.push(msg);
+      if (msg.role === "assistant" && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+        pendingToolResults = msg.tool_calls.length;
+      } else {
+        pendingToolResults = 0;
+      }
+    }
+
+    return normalized;
+  }
+
+  async function renderPrompt() {
+    const requestId = ++renderRequestId;
+    const isCurrentRender = () => requestId === renderRequestId;
+
+    try {
+      setStatus("Rendering prompt...");
+      renderedTokens = [];
+      renderEngine = "—";
+      tokenizationEngine = "—";
+      templateSource = "—";
+      const modelId = repoId.value.trim();
+      const rev = revision.value.trim() || "main";
+      
+      if (!modelId) {
+        setStatus("No Hugging Face repository selected.", "bad");
+        return;
+      }
+      
+      const rawMessages = parseJsonTextarea(messagesEl, "Messages");
+      const messages = normalizeMessages(rawMessages);
+      const tools = parseJsonTextarea(toolsEl, "Tools");
+
+      let tokenizer = null;
+      let template = null;
+      let bos_token = "<s>";
+      let eos_token = "</s>";
+
+      // 1. Fetch chat template
+      try {
+        template = await getChatTemplate(modelId, rev);
+        if (!isCurrentRender()) return;
+        templateText = template;
+      } catch (err) {
+        throw new Error(`Failed to load chat template: ${err.message}`);
+      }
+
+      // 2. Fetch tokenizer
+      try {
+        tokenizer = await getTokenizer(modelId, rev);
+        if (!isCurrentRender()) return;
+        bos_token = tokenizer.bos_token || "<s>";
+        eos_token = tokenizer.eos_token || "</s>";
+      } catch (tokErr) {
+        console.warn("Tokenizer loading failed; checking config JSON file fallback...", tokErr);
+        try {
+          const encodedRev = encodeURIComponent(rev || "main");
+          const base = `https://huggingface.co/${modelId}/raw/${encodedRev}`;
+          const cfgText = await fetchText(`${base}/tokenizer_config.json`);
+          const cfg = JSON.parse(cfgText);
+          bos_token = typeof cfg.bos_token === 'string' ? cfg.bos_token : (cfg.bos_token?.content || "<s>");
+          eos_token = typeof cfg.eos_token === 'string' ? cfg.eos_token : (cfg.eos_token?.content || "</s>");
+        } catch (cfgErr) {
+          console.warn("Tokenizer config JSON request failed. Using standard defaults.", cfgErr);
+        }
+      }
+
+      // 3. Setup Jinja Context
+      const context = {
+        messages: messages,
+        bos_token: bos_token,
+        eos_token: eos_token,
+        add_generation_prompt: true,
+      };
+      if (tools && tools.length) {
+        context.tools = tools;
+      }
+      if (enableThinking.value !== "omit") {
+        context.enable_thinking = enableThinking.value === "true";
+      }
+      if (reasoningEffort.value !== "omit") {
+        context.reasoning_effort = reasoningEffort.value;
+      }
+
+      // 4. Try native Transformers.js engine
+      let nativeRenderOk = false;
+      if (tokenizer) {
+        try {
+          tokenizer.chat_template = template;
+          const opts = buildTemplateOptions();
+          opts.tools = tools;
+          opts.chat_template = template;
+          opts.template = template;
+          
+          // Deep clone the messages array before passing it to native apply_chat_template
+          // because the native engine mutates the inputs in place (wrapping arguments/content in internal types),
+          // which corrupts the messages context if we need to fall back to Pyodide!
+          const clonedMessages = JSON.parse(JSON.stringify(messages));
+          renderedText = tokenizer.apply_chat_template(clonedMessages, opts);
+          renderEngine = "Transformers.js apply_chat_template";
+          nativeRenderOk = true;
+          
+          try {
+            const clonedMessagesForTokens = JSON.parse(JSON.stringify(messages));
+            const tokenized = tokenizer.apply_chat_template(clonedMessagesForTokens, { ...opts, tokenize: true });
+            const ids = normalizeTokenIdList(tokenized);
+            setTokenizationResult({
+              ids,
+              tokens: await getTokensList(tokenizer, ids, renderedText),
+              engine: "Transformers.js apply_chat_template(tokenize)",
+            });
+            if (!isCurrentRender()) return;
+          } catch (err) {
+            console.warn("Native chat-template tokenization failed; tokenizing rendered text with adapters...", err);
+            try {
+              setTokenizationResult(await tokenizeRenderedText(modelId, rev, renderedText, tokenizer));
+              if (!isCurrentRender()) return;
+            } catch (adapterErr) {
+              setTokenizationError(adapterErr);
+            }
+          }
+          setStatus("Ready");
+        } catch (nativeErr) {
+          console.warn("Transformers.js apply_chat_template failed. Retrying in Pyodide...", nativeErr);
+        }
+      }
+
+      // 5. Pyodide Jinja2 Fallback engine
+      if (!nativeRenderOk) {
+        setStatus("Jinja rendering in Python Pyodide sandbox...");
+        renderedText = await renderJinjaViaPyodide(template, context);
+        if (!isCurrentRender()) return;
+        renderEngine = "Pyodide Python Jinja2 fallback";
+        try {
+          setTokenizationResult(await tokenizeRenderedText(modelId, rev, renderedText, tokenizer));
+          if (!isCurrentRender()) return;
+        } catch (tokErr) {
+          setTokenizationError(tokErr);
+        }
+        setStatus("Ready");
+      }
+
+      if (!isCurrentRender()) return;
+      showTab(currentTab);
+    } catch (err) {
+      if (!isCurrentRender()) return;
+      renderedText = "";
+      renderEngine = "—";
+      tokenizationEngine = "—";
+      showTab(currentTab);
+      const message = err.message || String(err);
+      const conciseMessage = message.includes("Message has tool role")
+        ? "Invalid tool transcript: tool messages must immediately follow an assistant message with a tool call. Orphan tool messages are now filtered before rendering; edit or reload if this persists."
+        : message;
+      setStatus(conciseMessage, "bad");
+    }
+  }
+
+  // --- Visual Messages Builder DOM Logic ---
+
+  function ensureSystemMessageFirst(messages) {
+    const list = Array.isArray(messages) ? [...messages] : [];
+    const systemIndex = list.findIndex(msg => msg && msg.role === "system");
+    const systemMessage = systemIndex >= 0
+      ? list.splice(systemIndex, 1)[0]
+      : { role: "system", content: "" };
+    systemMessage.role = "system";
+    return [systemMessage, ...list];
+  }
+
+  function setReasoningFromSlider(value) {
+    const levels = ["omit", "low", "medium", "high"];
+    const level = levels[Number(value)] || "omit";
+    reasoningEffort.value = level;
+    enableThinking.value = level === "omit" ? "omit" : "true";
+    addGenerationPrompt.value = "true";
+  }
+
+  function getReasoningSliderValue() {
+    return { omit: 0, low: 1, medium: 2, high: 3 }[reasoningEffort.value] ?? 0;
+  }
+
+  function getReasoningSliderLabel(value) {
+    return ["off", "low", "medium", "high"][Number(value)] || "off";
+  }
+  
+  function renderVisualMessages(messages) {
+    const container = $("visualMessagesContainer");
+    container.innerHTML = "";
+    
+    if (!Array.isArray(messages)) return;
+    messages = ensureSystemMessageFirst(messages);
+    
+    messages.forEach((msg, index) => {
+      const item = document.createElement("div");
+      item.className = `message-item role-${msg.role || 'user'}${index === 0 ? ' system-prompt-item' : ''}`;
+      item.dataset.index = index;
+      item.dataset.role = index === 0 ? "system" : (msg.role || "user");
+      item.dataset.rawMessage = JSON.stringify(msg || {});
+      
+      // Header
+      const header = document.createElement("div");
+      header.className = "message-header";
+      
+      if (index === 0) {
+        const roleLabel = document.createElement("span");
+        roleLabel.className = "role-badge role-system";
+        roleLabel.textContent = "system";
+        header.appendChild(roleLabel);
+      } else {
+        const roleSelect = document.createElement("select");
+        roleSelect.className = "role-select";
+        ["user", "assistant", "tool"].forEach(role => {
+          const opt = document.createElement("option");
+          opt.value = role;
+          opt.textContent = role;
+          opt.selected = item.dataset.role === role;
+          roleSelect.appendChild(opt);
+        });
+
+        const actions = document.createElement("div");
+        actions.className = "message-actions";
+
+        const upBtn = document.createElement("button");
+        upBtn.className = "action-btn";
+        upBtn.textContent = "↑";
+        upBtn.title = "Move up";
+        upBtn.disabled = index === 1;
+
+        const downBtn = document.createElement("button");
+        downBtn.className = "action-btn";
+        downBtn.textContent = "↓";
+        downBtn.title = "Move down";
+        downBtn.disabled = index === messages.length - 1;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "action-btn delete-btn";
+        removeBtn.textContent = "Remove";
+
+        actions.appendChild(upBtn);
+        actions.appendChild(downBtn);
+        actions.appendChild(removeBtn);
+        header.appendChild(roleSelect);
+        header.appendChild(actions);
+
+        roleSelect.addEventListener("change", () => {
+          const currentMsgs = getMessagesFromVisual();
+          currentMsgs[index].role = roleSelect.value;
+          if (roleSelect.value === "tool") {
+            currentMsgs[index].tool_call_id ||= `call_${Math.random().toString(36).substr(2, 9)}`;
+            currentMsgs[index].name ||= "tool_name";
+          } else {
+            delete currentMsgs[index].tool_call_id;
+            delete currentMsgs[index].name;
+          }
+          if (roleSelect.value !== "assistant") {
+            delete currentMsgs[index].tool_calls;
+            delete currentMsgs[index].reasoning_content;
+          }
+          renderVisualMessages(currentMsgs);
+          syncVisualToJSON();
+        });
+
+        upBtn.addEventListener("click", () => {
+          const currentMsgs = getMessagesFromVisual();
+          if (index <= 1) return;
+          [currentMsgs[index - 1], currentMsgs[index]] = [currentMsgs[index], currentMsgs[index - 1]];
+          renderVisualMessages(currentMsgs);
+          syncVisualToJSON();
+        });
+
+        downBtn.addEventListener("click", () => {
+          const currentMsgs = getMessagesFromVisual();
+          if (index >= currentMsgs.length - 1) return;
+          [currentMsgs[index], currentMsgs[index + 1]] = [currentMsgs[index + 1], currentMsgs[index]];
+          renderVisualMessages(currentMsgs);
+          syncVisualToJSON();
+        });
+
+        removeBtn.addEventListener("click", () => {
+          const currentMsgs = getMessagesFromVisual();
+          currentMsgs.splice(index, 1);
+          renderVisualMessages(currentMsgs);
+          syncVisualToJSON();
+        });
+      }
+      item.appendChild(header);
+
+      if (index === 0) {
+        const slider = document.createElement("div");
+        slider.className = "reasoning-slider";
+        const sliderLabel = document.createElement("span");
+        sliderLabel.textContent = "Reasoning effort";
+        const sliderInput = document.createElement("input");
+        sliderInput.type = "range";
+        sliderInput.min = "0";
+        sliderInput.max = "3";
+        sliderInput.step = "1";
+        sliderInput.value = getReasoningSliderValue();
+        const sliderValue = document.createElement("span");
+        sliderValue.className = "reasoning-slider-value";
+        sliderValue.textContent = getReasoningSliderLabel(sliderInput.value);
+        sliderInput.addEventListener("input", () => {
+          sliderValue.textContent = getReasoningSliderLabel(sliderInput.value);
+          setReasoningFromSlider(sliderInput.value);
+          validateAndSave();
+        });
+        slider.appendChild(sliderLabel);
+        slider.appendChild(sliderInput);
+        slider.appendChild(sliderValue);
+        item.appendChild(slider);
+      }
+      
+      // Body
+      const body = document.createElement("div");
+      body.className = "message-body";
+      
+      if (msg.role === "tool") {
+        // Tool fields
+        const toolFields = document.createElement("div");
+        toolFields.className = "tool-fields";
+        
+        const idDiv = document.createElement("div");
+        const idLabel = document.createElement("label");
+        idLabel.textContent = "Tool Call ID";
+        const idInput = document.createElement("input");
+        idInput.className = "tool-id-input";
+        idInput.value = msg.tool_call_id || "";
+        idInput.placeholder = "call_...";
+        idDiv.appendChild(idLabel);
+        idDiv.appendChild(idInput);
+        
+        const nameDiv = document.createElement("div");
+        const nameLabel = document.createElement("label");
+        nameLabel.textContent = "Tool Name";
+        const nameInput = document.createElement("input");
+        nameInput.className = "tool-name-input";
+        nameInput.value = msg.name || "";
+        nameInput.placeholder = "get_weather";
+        nameDiv.appendChild(nameLabel);
+        nameDiv.appendChild(nameInput);
+        
+        toolFields.appendChild(idDiv);
+        toolFields.appendChild(nameDiv);
+        body.appendChild(toolFields);
+        
+        // Content textarea
+        const contentLabel = document.createElement("label");
+        contentLabel.textContent = "Result Content";
+        const contentTextarea = document.createElement("textarea");
+        contentTextarea.className = "message-content-textarea";
+        contentTextarea.value = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content, null, 2);
+        contentTextarea.placeholder = "Tool output value...";
+        body.appendChild(contentLabel);
+        body.appendChild(contentTextarea);
+        
+      } else if (msg.role === "assistant") {
+        // Content textarea
+        const contentLabel = document.createElement("label");
+        contentLabel.textContent = "Assistant Content";
+        const contentTextarea = document.createElement("textarea");
+        contentTextarea.className = "message-content-textarea";
+        contentTextarea.value = msg.content || "";
+        contentTextarea.placeholder = "Response string...";
+        body.appendChild(contentLabel);
+        body.appendChild(contentTextarea);
+        
+        // Reasoning section
+        const hasReasoning = msg.reasoning_content !== undefined;
+        const reasoningSection = document.createElement("div");
+        reasoningSection.className = "reasoning-section";
+        
+        const reasoningToggleContainer = document.createElement("div");
+        reasoningToggleContainer.className = "reasoning-toggle-container";
+        const reasoningCheckbox = document.createElement("input");
+        reasoningCheckbox.type = "checkbox";
+        reasoningCheckbox.id = `reasoning-check-${index}`;
+        reasoningCheckbox.className = "reasoning-check";
+        reasoningCheckbox.checked = hasReasoning;
+        
+        const reasoningLabel = document.createElement("label");
+        reasoningLabel.htmlFor = `reasoning-check-${index}`;
+        reasoningLabel.textContent = "Include reasoning_content (DeepSeek style)";
+        reasoningLabel.className = "checkbox-label";
+        
+        reasoningToggleContainer.appendChild(reasoningCheckbox);
+        reasoningToggleContainer.appendChild(reasoningLabel);
+        reasoningSection.appendChild(reasoningToggleContainer);
+        
+        const reasoningTextarea = document.createElement("textarea");
+        reasoningTextarea.className = "reasoning-content-textarea";
+        reasoningTextarea.placeholder = "<think> reasoning text...</think>";
+        reasoningTextarea.value = msg.reasoning_content || "";
+        reasoningTextarea.style.display = hasReasoning ? "block" : "none";
+        
+        reasoningCheckbox.addEventListener("change", (e) => {
+          reasoningTextarea.style.display = e.target.checked ? "block" : "none";
+          syncVisualToJSON();
+        });
+        
+        reasoningSection.appendChild(reasoningTextarea);
+        body.appendChild(reasoningSection);
+        
+        // Tool Calls
+        const toolCallsSection = document.createElement("div");
+        toolCallsSection.className = "tool-calls-section";
+        
+        const tcHeader = document.createElement("div");
+        tcHeader.className = "tool-calls-header";
+        tcHeader.innerHTML = `<span>Tool Calls</span>`;
+        
+        const addTcBtn = document.createElement("button");
+        addTcBtn.className = "btn-secondary btn-sm";
+        addTcBtn.style.padding = "2px 6px";
+        addTcBtn.innerHTML = `+ Add Tool Call`;
+        
+        tcHeader.appendChild(addTcBtn);
+        toolCallsSection.appendChild(tcHeader);
+        
+        const tcList = document.createElement("div");
+        tcList.className = "tool-calls-list";
+        
+        if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+          msg.tool_calls.forEach((tc, tcIndex) => {
+            tcList.appendChild(createToolCallItemDOM(tc, tcIndex));
+          });
+        }
+        
+        toolCallsSection.appendChild(tcList);
+        body.appendChild(toolCallsSection);
+        
+        addTcBtn.addEventListener("click", () => {
+          const newTc = { id: `call_${Math.random().toString(36).substr(2, 9)}`, type: "function", function: { name: "", arguments: "" } };
+          tcList.appendChild(createToolCallItemDOM(newTc, tcList.children.length));
+          syncVisualToJSON();
+        });
+        
+      } else {
+        // System / User
+        const contentLabel = document.createElement("label");
+        contentLabel.textContent = msg.role === "system" ? "System Instructions" : "User Query";
+        const contentTextarea = document.createElement("textarea");
+        contentTextarea.className = "message-content-textarea";
+        contentTextarea.value = msg.content || "";
+        contentTextarea.placeholder = msg.role === "system" ? "You are a helpful assistant..." : "Enter text here...";
+        body.appendChild(contentLabel);
+        body.appendChild(contentTextarea);
+      }
+      
+      item.appendChild(body);
+      container.appendChild(item);
+      
+      // Sync on manual changes
+      const inputs = item.querySelectorAll("input, textarea");
+      inputs.forEach(input => {
+        if (!input.classList.contains("reasoning-check")) {
+          input.addEventListener("input", debounce(() => {
+            syncVisualToJSON();
+          }, 400));
+        }
+      });
+    });
+  }
+
+  function createToolCallItemDOM(tc, tcIndex) {
+    const item = document.createElement("div");
+    item.className = "tool-call-item";
+    
+    const fields = document.createElement("div");
+    fields.className = "tool-call-fields";
+    
+    const idDiv = document.createElement("div");
+    const idLabel = document.createElement("label");
+    idLabel.textContent = "Call ID";
+    const idInput = document.createElement("input");
+    idInput.className = "tool-call-id-input";
+    idInput.value = tc.id || "";
+    idInput.placeholder = "call_abc123";
+    idDiv.appendChild(idLabel);
+    idDiv.appendChild(idInput);
+    
+    const nameDiv = document.createElement("div");
+    const nameLabel = document.createElement("label");
+    nameLabel.textContent = "Function";
+    const nameInput = document.createElement("input");
+    nameInput.className = "tool-call-name-input";
+    nameInput.value = tc.function?.name || "";
+    nameInput.placeholder = "get_weather";
+    nameDiv.appendChild(nameLabel);
+    nameDiv.appendChild(nameInput);
+    
+    fields.appendChild(idDiv);
+    fields.appendChild(nameDiv);
+    item.appendChild(fields);
+    
+    const argsLabel = document.createElement("label");
+    argsLabel.textContent = "Arguments (JSON)";
+    const argsTextarea = document.createElement("textarea");
+    argsTextarea.className = "tool-call-args-textarea";
+    
+    let argsVal = tc.function?.arguments || "";
+    if (typeof argsVal === "object") {
+      argsVal = JSON.stringify(argsVal, null, 2);
+    }
+    argsTextarea.value = argsVal;
+    argsTextarea.placeholder = '{\n  "key": "value"\n}';
+    item.appendChild(argsLabel);
+    item.appendChild(argsTextarea);
+    
+    const delBtn = document.createElement("button");
+    delBtn.className = "btn-danger btn-sm";
+    delBtn.style.alignSelf = "flex-end";
+    delBtn.style.padding = "2px 6px";
+    delBtn.innerHTML = `Remove`;
+    item.appendChild(delBtn);
+    
+    delBtn.addEventListener("click", () => {
+      if (!window.confirm("Remove this tool call?")) return;
+      item.remove();
+      syncVisualToJSON();
+      showToast("Tool call removed.");
+    });
+    
+    return item;
+  }
+
+  function getMessagesFromVisual() {
+    const container = $("visualMessagesContainer");
+    const messageItems = container.querySelectorAll(".message-item");
+    const messages = [];
+    
+    messageItems.forEach(item => {
+      const roleSelect = item.querySelector(".role-select");
+      const role = roleSelect ? roleSelect.value : (item.dataset.role || "user");
+      
+      let msg = {};
+      try {
+        msg = JSON.parse(item.dataset.rawMessage || "{}");
+      } catch (e) {
+        msg = {};
+      }
+      msg.role = role;
+      
+      if (role === "system" || role === "user") {
+        const contentArea = item.querySelector(".message-content-textarea");
+        msg.content = contentArea.value;
+      } else if (role === "tool") {
+        delete msg.tool_calls;
+        delete msg.reasoning_content;
+        const idInput = item.querySelector(".tool-id-input");
+        const nameInput = item.querySelector(".tool-name-input");
+        const contentArea = item.querySelector(".message-content-textarea");
+        msg.tool_call_id = idInput.value;
+        msg.name = nameInput.value;
+        
+        msg.content = contentArea.value.trim();
+      } else if (role === "assistant") {
+        delete msg.tool_call_id;
+        delete msg.name;
+        const contentArea = item.querySelector(".message-content-textarea");
+        msg.content = contentArea.value;
+        
+        // Check reasoning content
+        const reasoningCheck = item.querySelector(".reasoning-check");
+        if (reasoningCheck && reasoningCheck.checked) {
+          const reasoningArea = item.querySelector(".reasoning-content-textarea");
+          msg.reasoning_content = reasoningArea.value;
+        } else {
+          delete msg.reasoning_content;
+        }
+        
+        // Tool calls
+        const toolCallItems = item.querySelectorAll(".tool-call-item");
+        if (toolCallItems.length > 0) {
+          msg.tool_calls = [];
+          toolCallItems.forEach(tcItem => {
+            const tcId = tcItem.querySelector(".tool-call-id-input").value;
+            const tcName = tcItem.querySelector(".tool-call-name-input").value;
+            const tcArgsArea = tcItem.querySelector(".tool-call-args-textarea");
+            
+            let args = tcArgsArea.value.trim();
+            msg.tool_calls.push({
+              id: tcId,
+              type: "function",
+              function: {
+                name: tcName,
+                arguments: args
+              }
+            });
+          });
+        } else {
+          delete msg.tool_calls;
+        }
+      }
+      messages.push(msg);
+    });
+    return messages;
+  }
+
+  function syncVisualToJSON() {
+    const messages = ensureSystemMessageFirst(getMessagesFromVisual());
+    messagesEl.value = JSON.stringify(messages, null, 2);
+    validateAndSave();
+  }
+
+  function syncJSONToVisual() {
+    try {
+      const rawVal = messagesEl.value.trim();
+      if (!rawVal) return;
+      const messages = JSON.parse(rawVal);
+      if (Array.isArray(messages)) {
+        const normalized = ensureSystemMessageFirst(messages);
+        messagesEl.value = JSON.stringify(normalized, null, 2);
+        renderVisualMessages(normalized);
+      }
+    } catch (e) {
+      // Don't render invalid JSON while typing
+    }
+  }
+
+  function messagesHaveUnsupportedVisualFields(messages) {
+    const supportedByRole = {
+      system: new Set(["role", "content"]),
+      user: new Set(["role", "content"]),
+      assistant: new Set(["role", "content", "reasoning_content", "tool_calls"]),
+      tool: new Set(["role", "content", "tool_call_id", "name"])
+    };
+    return Array.isArray(messages) && messages.some(msg => {
+      const supported = supportedByRole[msg.role] || new Set(["role", "content"]);
+      return Object.keys(msg || {}).some(key => !supported.has(key));
+    });
+  }
+
+  // --- State validation & Storage sync ---
+
+  function validateAndSave() {
+    let messagesOk = false;
+    let toolsOk = false;
+    
+    // Validate Messages
+    try {
+      const val = messagesEl.value.trim();
+      if (val) {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) {
+          messagesOk = true;
+          $("messagesError").textContent = "";
+          $("messagesError").className = "error-indicator hidden";
+        } else {
+          throw new Error("Value must be a JSON array of message objects");
+        }
+      } else {
+        messagesOk = true;
+      }
+    } catch (err) {
+      $("messagesError").textContent = `Invalid JSON: ${err.message}`;
+      $("messagesError").className = "error-indicator visible";
+    }
+    
+    // Validate Tools
+    try {
+      const val = toolsEl.value.trim();
+      if (val) {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) {
+          toolsOk = true;
+          $("toolsError").textContent = "";
+          $("toolsError").className = "error-indicator hidden";
+        } else {
+          throw new Error("Value must be a JSON array of tool definitions");
+        }
+      } else {
+        toolsOk = true;
+      }
+    } catch (err) {
+      $("toolsError").textContent = `Invalid JSON: ${err.message}`;
+      $("toolsError").className = "error-indicator visible";
+    }
+    
+    // Save to local storage and update preview
+    if (messagesOk && toolsOk) {
+      saveToLocalStorage();
+      debouncedRender();
+    }
+  }
+
+  function saveToLocalStorage() {
+    const state = {
+      model: modelSelect.value,
+      repo: repoId.value.trim(),
+      revision: revision.value.trim(),
+      add_generation_prompt: addGenerationPrompt.value,
+      enable_thinking: enableThinking.value,
+      reasoning_effort: reasoningEffort.value,
+      messages: messagesEl.value,
+      tools: toolsEl.value,
+      toolPreset: $("toolPresetSelect").value
+    };
+    localStorage.setItem("promptloom_state", JSON.stringify(state));
+  }
+
+  function loadFromLocalStorage() {
+    const saved = localStorage.getItem("promptloom_state");
+    const token = localStorage.getItem("promptloom_token");
+    if (token) {
+      $("hfToken").value = token;
+    }
+    
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        modelSelect.value = state.model || MODELS[0].key;
+        repoId.value = state.repo || MODELS[0].repo;
+        revision.value = state.revision || "main";
+        addGenerationPrompt.value = state.add_generation_prompt || "true";
+        enableThinking.value = state.enable_thinking || "omit";
+        reasoningEffort.value = state.reasoning_effort || "omit";
+        messagesEl.value = state.messages;
+        toolsEl.value = state.tools;
+        $("toolPresetSelect").value = state.toolPreset || "weather";
+        
+        const m = MODELS.find(mod => mod.key === state.model);
+        if (m) {
+          modelNote.textContent = m.note;
+        } else {
+          modelNote.textContent = "Custom Hugging Face repository.";
+        }
+      } catch (e) {
+        console.error("Local storage load failed. Resetting.", e);
+        syncModelDefaults();
+      }
+    } else {
+      syncModelDefaults();
+    }
+  }
+
+  // --- URL hash shareable workspace state ---
+
+  function encodeStateToHash() {
+    const state = {
+      m: modelSelect.value,
+      r: repoId.value.trim(),
+      v: revision.value.trim(),
+      gp: addGenerationPrompt.value,
+      et: enableThinking.value,
+      re: reasoningEffort.value,
+      msg: messagesEl.value,
+      t: toolsEl.value
+    };
+    try {
+      const jsonStr = JSON.stringify(state);
+      const utf8B64 = btoa(unescape(encodeURIComponent(jsonStr)));
+      window.location.hash = utf8B64;
+      return window.location.href;
+    } catch (e) {
+      console.error("Failed to generate share link", e);
+      return window.location.href;
+    }
+  }
+
+  function loadStateFromHash() {
+    if (!window.location.hash || window.location.hash === "#") return;
+    try {
+      const hash = window.location.hash.substring(1);
+      const jsonStr = decodeURIComponent(escape(atob(hash)));
+      const state = JSON.parse(jsonStr);
+      
+      modelSelect.value = state.m || "custom";
+      repoId.value = state.r || "";
+      revision.value = state.v || "main";
+      addGenerationPrompt.value = state.gp || "true";
+      enableThinking.value = state.et || "omit";
+      reasoningEffort.value = state.re || "omit";
+      messagesEl.value = state.msg || "[]";
+      toolsEl.value = state.t || "[]";
+      
+      const m = MODELS.find(mod => mod.key === state.m);
+      if (m) {
+        modelNote.textContent = m.note;
+      } else {
+        modelNote.textContent = "Custom Hugging Face repository loaded via shared workspace.";
+      }
+      
+      updateHuggingFaceLink();
+      showToast("Workspace state imported from link.");
+      
+      // Clean URL hash so refreshing doesn't overwrite modifications.
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      
+      validateAndSave();
+    } catch (e) {
+      console.error("Failed to parse workspace state from URL", e);
+    }
+  }
+
+  // --- Utilities & Events ---
+
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  const debouncedRender = debounce(renderPrompt, 600);
+
+  async function copyOutput() {
+    const text = currentTab === "template" ? templateText : currentTab === "tokens" ? tokenText : renderedText;
+    await navigator.clipboard.writeText(text || "");
+    showToast("Copied to clipboard.");
+  }
+
+  function downloadOutput() {
+    const text = currentTab === "template" ? templateText : currentTab === "tokens" ? tokenText : renderedText;
+    const modelKey = selectedModel().key;
+    const blob = new Blob([text || ""], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `chattemplateplayground_${modelKey}_${currentTab}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast("Output downloaded.");
+  }
+
+  function setupModelPresetCards() {
+    const container = $("presetsGrid");
+    if (!container) return;
+    container.innerHTML = "";
+    
+    MODELS.forEach((m, idx) => {
+      if (idx > 0) {
+        container.appendChild(document.createTextNode(" · "));
+      }
+      const link = document.createElement("a");
+      link.className = "model-preset-link";
+      link.dataset.key = m.key;
+      link.textContent = m.label;
+      link.href = "#";
+      
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        modelSelect.value = m.key;
+        syncModelDefaults();
+      });
+      
+      container.appendChild(link);
+    });
+  }
+
+  // Initialize UI controls
+  MODELS.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.key;
+    opt.textContent = m.label;
+    modelSelect.appendChild(opt);
+  });
+  
+  // Custom repo option inside selector
+  const customOpt = document.createElement("option");
+  customOpt.value = "custom";
+  customOpt.textContent = "Custom Repository...";
+  modelSelect.appendChild(customOpt);
+
+  setupModelPresetCards();
+  loadFromLocalStorage();
+  loadStateFromHash();
+  syncJSONToVisual();
+
+  // Mode Switch
+  $("modeVisualBtn").addEventListener("click", () => {
+    if (messageEditorMode === "visual") return;
+
+    try {
+      const messages = JSON.parse(messagesEl.value.trim() || "[]");
+      if (messagesHaveUnsupportedVisualFields(messages)) {
+        const ok = window.confirm(
+          "The raw JSON contains fields the Visual Editor cannot display directly. " +
+          "chattemplateplayground will preserve unknown fields while you edit known fields, but role changes may remove role-specific fields. Continue?"
+        );
+        if (!ok) return;
+      }
+    } catch (e) {
+      showToast("Cannot switch to Visual Editor while message JSON is invalid.");
+      return;
+    }
+
+    messageEditorMode = "visual";
+    $("modeVisualBtn").classList.add("active");
+    $("modeJsonBtn").classList.remove("active");
+    $("visualMessagesWrapper").classList.remove("hidden");
+    $("jsonMessagesWrapper").classList.add("hidden");
+    syncJSONToVisual();
+  });
+
+  $("modeJsonBtn").addEventListener("click", () => {
+    if (messageEditorMode === "json") return;
+    messageEditorMode = "json";
+    $("modeJsonBtn").classList.add("active");
+    $("modeVisualBtn").classList.remove("active");
+    $("jsonMessagesWrapper").classList.remove("hidden");
+    $("visualMessagesWrapper").classList.add("hidden");
+    syncVisualToJSON();
+  });
+
+  $("formatJsonBtn").addEventListener("click", () => {
+    try {
+      const val = messagesEl.value.trim();
+      if (val) {
+        messagesEl.value = JSON.stringify(JSON.parse(val), null, 2);
+        validateAndSave();
+        showToast("JSON formatted.");
+      }
+    } catch (e) {
+      showToast("Cannot format invalid JSON.");
+    }
+  });
+
+  // Tools presets listener
+  $("toolPresetSelect").addEventListener("change", (e) => {
+    const preset = e.target.value;
+    if (TOOL_PRESETS[preset]) {
+      toolsEl.value = JSON.stringify(TOOL_PRESETS[preset], null, 2);
+      validateAndSave();
+    }
+  });
+
+  // Input listeners
+  modelSelect.addEventListener("change", () => {
+    if (modelSelect.value === "custom") {
+      // Clear preset cards active state but keep inputs as custom
+      document.querySelectorAll(".model-preset-link").forEach(card => card.classList.remove("active"));
+      modelNote.textContent = "Enter a Hugging Face Hub repository identifier (e.g. meta-llama/Llama-3-8b-instruct) below.";
+    } else {
+      syncModelDefaults();
+    }
+  });
+  
+  async function checkRepoAndSuggestions() {
+    const val = repoId.value.trim();
+    updateHuggingFaceLink();
+    
+    if (!val) {
+      repoValidationStatus.textContent = "";
+      repoValidationStatus.className = "repo-validation-status";
+      return;
+    }
+
+    // 1. Fetch autocomplete suggestions from Hugging Face Hub.
+    if (val.length >= 2) {
+      try {
+        const res = await fetch(`https://huggingface.co/api/models?search=${encodeURIComponent(val)}&limit=12&sort=downloads&direction=-1`);
+        if (res.ok) {
+          const models = await res.json();
+          repoSuggestions.innerHTML = "";
+          models.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m.modelId;
+            opt.label = `${m.downloads?.toLocaleString?.() || 0} downloads`;
+            repoSuggestions.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to fetch suggestions:", e);
+      }
+    }
+
+    // 2. Validate exact repo if it looks like a repo (contains a slash)
+    if (val.includes("/")) {
+      repoValidationStatus.textContent = "Checking model details...";
+      repoValidationStatus.className = "repo-validation-status searching";
+      
+      try {
+        const headers = {};
+        const token = localStorage.getItem("promptloom_token") || "";
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        
+        const res = await fetch(`https://huggingface.co/api/models/${val}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          const siblings = data.siblings || [];
+          const repoLower = val.toLowerCase();
+          const hasDeepSeekFallback = repoLower.startsWith("deepseek-ai/deepseek-");
+          const hasNativeTemplateFile = siblings.some(s => 
+            s.rpath === "chat_template.jinja" ||
+            s.rfilename === "chat_template.jinja"
+          );
+          const hasTokenizerConfig = siblings.some(s =>
+            s.rpath === "tokenizer_config.json" ||
+            s.rfilename === "tokenizer_config.json"
+          );
+          const hasConfigTemplate = !!(data.config && (
+            data.config.chat_template ||
+            (data.config.tokenizer_config && data.config.tokenizer_config.chat_template)
+          ));
+          const hasTemplate = hasNativeTemplateFile || hasConfigTemplate || hasTokenizerConfig || hasDeepSeekFallback;
+          
+          if (hasTemplate) {
+            let validationMessage = "Found: tokenizer config available; chattemplateplayground will inspect it for a chat template.";
+            if (hasNativeTemplateFile || hasConfigTemplate) {
+              validationMessage = "Found: native chat template detected.";
+            } else if (hasDeepSeekFallback) {
+              validationMessage = "Found: DeepSeek repo; DeepSeek V3 compatible fallback available if no native template exists.";
+            }
+
+            repoValidationStatus.innerHTML = `
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right:2px; vertical-align: middle;"><path d="M20 6L9 17l-5-5"/></svg>
+              ${validationMessage}
+            `;
+            repoValidationStatus.className = hasNativeTemplateFile || hasConfigTemplate || hasDeepSeekFallback ? "repo-validation-status valid" : "repo-validation-status searching";
+          } else {
+            repoValidationStatus.innerHTML = `
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px; vertical-align: middle;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Found, but model config may lack a template.
+            `;
+            repoValidationStatus.className = "repo-validation-status searching";
+          }
+        } else {
+          if (res.status === 401 || res.status === 403) {
+            repoValidationStatus.innerHTML = `
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px; vertical-align: middle;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Gated model or authorization required.
+            `;
+            repoValidationStatus.className = "repo-validation-status searching";
+          } else {
+            repoValidationStatus.innerHTML = `
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px; vertical-align: middle;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              Model not found on Hugging Face.
+            `;
+            repoValidationStatus.className = "repo-validation-status invalid";
+          }
+        }
+      } catch (err) {
+        repoValidationStatus.textContent = "Offline or API unreachable.";
+        repoValidationStatus.className = "repo-validation-status invalid";
+      }
+    } else {
+      repoValidationStatus.textContent = "";
+      repoValidationStatus.className = "repo-validation-status";
+    }
+  }
+
+  repoId.addEventListener("input", debounce(() => {
+    const val = repoId.value.trim();
+    const match = MODELS.find(m => m.repo === val);
+    if (match) {
+      modelSelect.value = match.key;
+      document.querySelectorAll(".model-preset-link").forEach(card => {
+        card.classList.toggle("active", card.dataset.key === match.key);
+      });
+      modelNote.textContent = match.note;
+    } else {
+      modelSelect.value = "custom";
+      document.querySelectorAll(".model-preset-link").forEach(card => card.classList.remove("active"));
+      modelNote.textContent = "Custom Hugging Face repository.";
+    }
+    checkRepoAndSuggestions();
+    validateAndSave();
+  }, 400));
+
+  revision.addEventListener("input", debounce(validateAndSave, 400));
+  addGenerationPrompt.addEventListener("change", validateAndSave);
+  enableThinking.addEventListener("change", validateAndSave);
+  reasoningEffort.addEventListener("change", validateAndSave);
+  messagesEl.addEventListener("input", debounce(validateAndSave, 400));
+  toolsEl.addEventListener("input", debounce(validateAndSave, 400));
+
+  // Visual messages actions
+  $("addMessageBtn").addEventListener("click", () => {
+    const current = getMessagesFromVisual();
+    current.push({ role: "user", content: "" });
+    renderVisualMessages(current);
+    syncVisualToJSON();
+  });
+
+  // Share link copy
+  $("shareBtn").addEventListener("click", () => {
+    const url = encodeStateToHash();
+    navigator.clipboard.writeText(url);
+    showToast("Shareable link copied to clipboard!");
+  });
+
+  // Modal Dialog Actions
+  const settingsModal = $("settingsModal");
+  $("openSettingsBtn").addEventListener("click", () => settingsModal.classList.add("active"));
+  $("closeSettingsBtn").addEventListener("click", () => settingsModal.classList.remove("active"));
+  $("saveTokenBtn").addEventListener("click", () => {
+    const tok = $("hfToken").value.trim();
+    if (tok) {
+      localStorage.setItem("promptloom_token", tok);
+    } else {
+      localStorage.removeItem("promptloom_token");
+    }
+    settingsModal.classList.remove("active");
+    showToast("API token settings updated.");
+    validateAndSave();
+  });
+  $("clearTokenBtn").addEventListener("click", () => {
+    $("hfToken").value = "";
+    localStorage.removeItem("promptloom_token");
+    settingsModal.classList.remove("active");
+    showToast("API token cleared.");
+    validateAndSave();
+  });
+
+  // Global escape key to close settings modal
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && settingsModal.classList.contains("active")) {
+      settingsModal.classList.remove("active");
+    }
+  });
+
+  // Token pastille hover/click highlight delegation
+  let lockedTokenId = null;
+
+  function focusTokenPastilles(tokenId) {
+    const pastilles = output.querySelectorAll(".token-pastille");
+    pastilles.forEach(p => {
+      if (p.dataset.tokenId === tokenId) {
+        p.classList.add("token-focus");
+        p.classList.remove("token-fade");
+      } else {
+        p.classList.remove("token-focus");
+        p.classList.add("token-fade");
+      }
+    });
+  }
+
+  function clearTokenPastilleFocus() {
+    const pastilles = output.querySelectorAll(".token-pastille");
+    pastilles.forEach(p => {
+      p.classList.remove("token-focus", "token-fade");
+    });
+  }
+
+  output.addEventListener("mouseover", (e) => {
+    const target = e.target.closest(".token-pastille");
+    if (!target) return;
+    focusTokenPastilles(target.dataset.tokenId);
+  });
+
+  output.addEventListener("mouseout", (e) => {
+    const target = e.target.closest(".token-pastille");
+    if (!target) return;
+
+    if (lockedTokenId !== null) {
+      focusTokenPastilles(lockedTokenId);
+    } else {
+      clearTokenPastilleFocus();
+    }
+  });
+
+  output.addEventListener("click", (e) => {
+    const target = e.target.closest(".token-pastille");
+    if (!target) {
+      lockedTokenId = null;
+      clearTokenPastilleFocus();
+      return;
+    }
+
+    if (lockedTokenId === target.dataset.tokenId) {
+      lockedTokenId = null;
+      clearTokenPastilleFocus();
+    } else {
+      lockedTokenId = target.dataset.tokenId;
+      focusTokenPastilles(lockedTokenId);
+    }
+  });
+
+  // Initial prompt render
+  checkRepoAndSuggestions();
+  renderPrompt();
+</script>
+</body>
+</html>
