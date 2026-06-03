@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>chattemplateplayground — Open Model Chat Template Playground</title>
+  <title>Chat Template Playground</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -924,14 +924,9 @@
 
 <header>
   <a href="#" class="brand">
-    <svg class="brand-logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px; height:20px; color:#000000; margin-right: 4px; vertical-align: middle;">
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-      <path d="M9 9h6M9 13h6M9 17h4"/>
-    </svg>
     <div>
-      <h1 style="color:#000000;">chattemplateplayground</h1>
+      <h1 style="color:#000000;">Chat Template Playground</h1>
     </div>
-    <span class="brand-tag">v1.1</span>
   </a>
   
   <div class="nav-actions">
@@ -1130,6 +1125,15 @@
 
   // Predefined Models metadata
   const MODELS = [
+    {
+      key: "gemma4_31b_it",
+      label: "Gemma 4 31B IT",
+      repo: "google/gemma-4-31B-it",
+      note: "Default landing template.",
+      defaults: { reasoning_effort: "omit", enable_thinking: "omit" },
+      tags: ["system", "default"],
+      logo: ``
+    },
     {
       key: "llama33",
       label: "Llama 3.3 70B IT",
